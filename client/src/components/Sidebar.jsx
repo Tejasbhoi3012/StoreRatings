@@ -1,25 +1,40 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 
+// Sidebar component
 export default function Sidebar({ role, isOpen, onClose }) {
-  const linkClasses = "block p-3 rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:border-l-4 hover:border-blue-500 transition-all duration-200 font-medium";
+  // Common CSS classes for all sidebar links
+  const linkClasses =
+    "block p-3 rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:border-l-4 hover:border-blue-500 transition-all duration-200 font-medium";
 
   return (
     <>
+      {/* Dark overlay background (only shows on mobile when sidebar is open) */}
       <div
         className={`fixed inset-0 bg-gray-600 bg-opacity-75 z-30 ${isOpen ? 'block' : 'hidden'} md:hidden`}
-        onClick={onClose}
+        onClick={onClose} // clicking background closes sidebar
       ></div>
+
+      {/* Sidebar container */}
       <aside
-        className={`transform top-0 left-0 w-64 bg-white border-r border-gray-200 p-6 min-h-screen fixed md:sticky overflow-auto z-40 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:block ${!isOpen ? 'hidden' : ''}`}
-        style={{ top: '3.5rem' }} // Height of Navbar
+        className={`transform top-0 left-0 w-64 bg-white border-r border-gray-200 p-6 min-h-screen fixed md:sticky overflow-auto z-40 transition-transform duration-300 ease-in-out 
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
+          md:translate-x-0 md:block 
+          ${!isOpen ? 'hidden' : ''}`}
+        style={{ top: '3.5rem' }} // pushes sidebar below Navbar (height = 56px / 3.5rem)
       >
+        {/* Sidebar Header */}
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Navigation</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            Navigation
+          </h2>
           <div className="w-10 h-0.5 bg-blue-600 rounded mt-2"></div>
         </div>
         
+        {/* Sidebar Links */}
         <ul className="space-y-2">
+          
+          {/* Admin role links */}
           {role === 'admin' && (
             <>
               <li>
@@ -42,6 +57,8 @@ export default function Sidebar({ role, isOpen, onClose }) {
               </li>
             </>
           )}
+
+          {/* User role links */}
           {role === 'user' && (
             <>
               <li>
@@ -58,6 +75,8 @@ export default function Sidebar({ role, isOpen, onClose }) {
               </li>
             </>
           )}
+
+          {/* Owner role links */}
           {role === 'owner' && (
             <>
               <li>
