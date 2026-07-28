@@ -11,7 +11,23 @@ const storesRoutes = require('./routes/stores')
 const ownerRoutes = require('./routes/owner')
 
 const app = express()
-app.use(cors())
+
+const allowedOrigins = [
+  'https://store-ratings-eta.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+]
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser requests (no Origin header, e.g. curl/health checks)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+}))
 app.use(express.json())
 
 // Health check
