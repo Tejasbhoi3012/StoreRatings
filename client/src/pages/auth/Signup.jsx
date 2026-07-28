@@ -1,11 +1,16 @@
 import React, { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { User, Mail, MapPin, Lock, AlertCircle } from 'lucide-react'
 import { signupUser } from '../../services/api'
 import { validateName, validateEmail, validatePassword, validateAddress } from '../../utils/validation'
-import { useNavigate, Link } from 'react-router-dom'
+import AuthLayout from '../../components/layout/AuthLayout'
+import { FormField, Input, Textarea } from '../../components/ui/Input'
+import Button from '../../components/ui/Button'
 
 export default function Signup() {
   const [form, setForm] = useState({ name: '', email: '', address: '', password: '' })
   const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   async function handleSubmit(e) {
@@ -18,153 +23,102 @@ export default function Signup() {
     setErrors(errs)
     if (e1 || e2 || e3 || e4) return
 
+    setLoading(true)
     try {
       await signupUser(form)
       navigate('/login')
     } catch (err) {
       setErrors({ form: err.response?.data?.message || 'Signup failed' })
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-green-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <span className="text-white font-bold text-xl">SR</span>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Join StoreRatings</h1>
-          <p className="text-gray-600">Create your account to get started</p>
+    <AuthLayout
+      panelTitle="Join a community that values honest feedback."
+      panelSubtitle="Create an account to start rating stores, or register your own store to gather feedback."
+    >
+      <div className="mb-8 lg:hidden flex items-center gap-2.5">
+        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+          <span className="text-primary-foreground font-bold text-xs">SR</span>
         </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Create Account</h2>
-          
-          {errors.form && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
-              <div className="flex items-center">
-                <span className="text-red-600 mr-2">⚠️</span>
-                <p className="text-red-700 font-medium">{errors.form}</p>
-              </div>
-            </div>
-          )}
-          
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Full Name
-              </label>
-              <input 
-                type="text"
-                className={`w-full border-2 rounded-lg p-3 text-gray-900 transition-all duration-200 outline-none ${
-                  errors.name 
-                    ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200' 
-                    : 'border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200'
-                }`}
-                placeholder="Enter your full name"
-                value={form.name} 
-                onChange={e=>setForm({...form, name: e.target.value})}
-                required
-              />
-              {errors.name && (
-                <p className="text-red-600 text-sm mt-1 flex items-center">
-                  <span className="mr-1">❌</span>
-                  {errors.name}
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address
-              </label>
-              <input 
-                type="email"
-                className={`w-full border-2 rounded-lg p-3 text-gray-900 transition-all duration-200 outline-none ${
-                  errors.email 
-                    ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200' 
-                    : 'border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200'
-                }`}
-                placeholder="Enter your email"
-                value={form.email} 
-                onChange={e=>setForm({...form, email: e.target.value})}
-                required
-              />
-              {errors.email && (
-                <p className="text-red-600 text-sm mt-1 flex items-center">
-                  <span className="mr-1">❌</span>
-                  {errors.email}
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Address
-              </label>
-              <textarea 
-                className={`w-full border-2 rounded-lg p-3 text-gray-900 transition-all duration-200 outline-none resize-none h-20 ${
-                  errors.address 
-                    ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200' 
-                    : 'border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200'
-                }`}
-                placeholder="Enter your address"
-                value={form.address} 
-                onChange={e=>setForm({...form, address: e.target.value})}
-                required
-              />
-              {errors.address && (
-                <p className="text-red-600 text-sm mt-1 flex items-center">
-                  <span className="mr-1">❌</span>
-                  {errors.address}
-                </p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Password
-              </label>
-              <input 
-                type="password"
-                className={`w-full border-2 rounded-lg p-3 text-gray-900 transition-all duration-200 outline-none ${
-                  errors.password 
-                    ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200' 
-                    : 'border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200'
-                }`}
-                placeholder="Create a password"
-                value={form.password} 
-                onChange={e=>setForm({...form, password: e.target.value})}
-                required
-              />
-              {errors.password && (
-                <p className="text-red-600 text-sm mt-1 flex items-center">
-                  <span className="mr-1">❌</span>
-                  {errors.password}
-                </p>
-              )}
-            </div>
-          </div>
-          
-          <button 
-            type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg mt-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
-          >
-            Create Account
-          </button>
-          
-          <div className="text-center mt-6">
-            <p className="text-gray-600">
-              Already have an account? 
-              <Link to="/login" className="ml-1 text-green-600 hover:text-green-700 font-semibold hover:underline transition-colors">
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </form>
+        <span className="font-semibold text-lg text-foreground tracking-tight">StoreRatings</span>
       </div>
-    </div>
+
+      <h1 className="text-2xl font-bold text-foreground tracking-tight">Create your account</h1>
+      <p className="text-sm text-muted-foreground mt-1.5">Get started with StoreRatings in a minute</p>
+
+      <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+        {errors.form && (
+          <div className="flex items-center gap-2.5 rounded-lg bg-error-bg border border-error/20 px-3.5 py-3 animate-slide-up">
+            <AlertCircle className="h-4 w-4 text-error flex-shrink-0" />
+            <p className="text-sm font-medium text-error">{errors.form}</p>
+          </div>
+        )}
+
+        <FormField label="Full name" error={errors.name}>
+          <Input
+            icon={<User className="h-4 w-4" />}
+            placeholder="Jane Doe (min. 20 characters)"
+            value={form.name}
+            onChange={e => setForm({ ...form, name: e.target.value })}
+            error={!!errors.name}
+            required
+          />
+        </FormField>
+
+        <FormField label="Email address" error={errors.email}>
+          <Input
+            type="email"
+            icon={<Mail className="h-4 w-4" />}
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={e => setForm({ ...form, email: e.target.value })}
+            error={!!errors.email}
+            required
+          />
+        </FormField>
+
+        <FormField label="Address" error={errors.address}>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-3 text-muted-foreground">
+              <MapPin className="h-4 w-4" />
+            </span>
+            <Textarea
+              className="pl-9 h-20"
+              placeholder="Enter your address"
+              value={form.address}
+              onChange={e => setForm({ ...form, address: e.target.value })}
+              error={!!errors.address}
+              required
+            />
+          </div>
+        </FormField>
+
+        <FormField label="Password" error={errors.password} hint={!errors.password ? '8-16 characters, one uppercase letter, one special character' : undefined}>
+          <Input
+            type="password"
+            icon={<Lock className="h-4 w-4" />}
+            placeholder="Create a password"
+            value={form.password}
+            onChange={e => setForm({ ...form, password: e.target.value })}
+            error={!!errors.password}
+            required
+          />
+        </FormField>
+
+        <Button type="submit" size="lg" className="w-full mt-2" loading={loading}>
+          Create account
+        </Button>
+
+        <p className="text-center text-sm text-muted-foreground pt-2">
+          Already have an account?{' '}
+          <Link to="/login" className="text-primary font-medium hover:text-primary-hover transition-colors">
+            Sign in
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   )
 }

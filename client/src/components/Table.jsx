@@ -1,7 +1,12 @@
 import React, { useMemo, useState } from 'react'
+import { ArrowUp, ArrowDown, ChevronsUpDown, Inbox } from 'lucide-react'
+import { cn } from '../lib/cn'
+import EmptyState from './ui/EmptyState'
+import Skeleton from './ui/Skeleton'
 
-export default function Table({ columns, data }) {
+export default function Table({ columns, data, loading = false, emptyTitle = 'No data available', emptyDescription }) {
   const [sort, setSort] = useState({ key: null, dir: 'asc' })
+
   const sorted = useMemo(() => {
     if (!sort.key) return data
     const col = columns.find(c => c.key === sort.key)
@@ -21,52 +26,69 @@ export default function Table({ columns, data }) {
     return copy
   }, [data, sort, columns])
 
-  function toggleSort(key) {
+  function toggleSort(key, sortable) {
+    if (sortable === false) return
     setSort(prev => {
       if (prev.key !== key) return { key, dir: 'asc' }
       return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
     })
   }
+
   return (
-    <div className="overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
-      <table className="min-w-full">
-        <thead className="bg-gray-50 border-b-2 border-gray-200">
-          <tr>
-            {columns.map(col => (
-              <th
-                key={col.key}
-                className="text-left p-4 font-bold text-gray-700 uppercase text-xs tracking-wider select-none cursor-pointer"
-                onClick={() => toggleSort(col.key)}
-                title="Click to sort"
-              >
-                <span className="inline-flex items-center gap-1">
-                  {col.title}
-                  {sort.key === col.key && (
-                    <span>{sort.dir === 'asc' ? '▲' : '▼'}</span>
-                  )}
-                </span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {sorted.map((row, idx) => (
-            <tr key={idx} className="hover:bg-gray-50 transition-colors duration-150">
-              {columns.map(col => (
-                <td key={col.key} className="p-4 text-gray-700 text-sm">
-                  {col.render ? col.render(row) : row[col.key]}
-                </td>
-              ))}
+    <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left">
+          <thead className="bg-surface-secondary border-b border-border">
+            <tr>
+              {columns.map(col => {
+                const sortable = col.sortable !== false
+                return (
+                  <th
+                    key={col.key}
+                    onClick={() => toggleSort(col.key, col.sortable)}
+                    className={cn(
+                      'px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground select-none whitespace-nowrap',
+                      sortable && 'cursor-pointer hover:text-foreground transition-colors'
+                    )}
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      {col.title}
+                      {sortable && (
+                        sort.key === col.key
+                          ? (sort.dir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)
+                          : <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />
+                      )}
+                    </span>
+                  </th>
+                )
+              })}
             </tr>
-          ))}
-        </tbody>
-      </table>
-      
-      {data.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <div className="text-4xl mb-4">📊</div>
-          <p className="text-lg font-medium">No data available</p>
-        </div>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {loading && Array.from({ length: 5 }).map((_, i) => (
+              <tr key={`skeleton-${i}`}>
+                {columns.map(col => (
+                  <td key={col.key} className="px-4 py-3.5">
+                    <Skeleton className="h-4 w-full max-w-[10rem]" />
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {!loading && sorted.map((row, idx) => (
+              <tr key={row.id ?? idx} className="hover:bg-surface-hover transition-colors duration-100">
+                {columns.map(col => (
+                  <td key={col.key} className="px-4 py-3.5 text-sm text-foreground whitespace-nowrap">
+                    {col.render ? col.render(row) : row[col.key]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {!loading && data.length === 0 && (
+        <EmptyState icon={Inbox} title={emptyTitle} description={emptyDescription} />
       )}
     </div>
   )

@@ -1,8 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import { Search, Plus, Trash2 } from 'lucide-react'
 import { getStoresAdmin, getUsers, assignStoreOwner, createStore, deleteStore } from '../../services/api'
 import Table from '../../components/Table'
-import Navbar from '../../components/Navbar'
-import Sidebar from '../../components/Sidebar'
+import DashboardLayout from '../../components/layout/DashboardLayout'
+import { Card, CardContent } from '../../components/ui/Card'
+import { FormField, Input, Select } from '../../components/ui/Input'
+import Button from '../../components/ui/Button'
+import Dialog from '../../components/ui/Dialog'
+import ConfirmDialog from '../../components/ui/ConfirmDialog'
+import { StarRating } from '../../components/ui/RatingStars'
+import { useToast } from '../../context/ToastContext'
 
 export default function StoresList() {
   const [stores, setStores] = useState([])
@@ -12,125 +19,167 @@ export default function StoresList() {
   const [form, setForm] = useState({ name: '', email: '', address: '', ownerId: '' })
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const { toast } = useToast()
 
-  useEffect(() => {
-    async function fetch() {
-      setLoading(true)
-      const [storesRes, ownersRes] = await Promise.all([
-        getStoresAdmin(Object.fromEntries(Object.entries(filters).filter(([_,v])=>v))),
-        getUsers({ role: 'owner' })
-      ])
-      setStores(storesRes.data || [])
-      setOwners(ownersRes.data || [])
-      setLoading(false)
+  async function refresh() {
+    setLoading(true)
+    const [storesRes, ownersRes] = await Promise.all([
+      getStoresAdmin(Object.fromEntries(Object.entries(filters).filter(([, v]) => v))),
+      getUsers({ role: 'owner' })
+    ])
+    setStores(storesRes.data || [])
+    setOwners(ownersRes.data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { refresh() }, [filters])
+
+  async function handleAssignOwner(row, e) {
+    const newOwnerId = e.target.value ? Number(e.target.value) : null
+    try {
+      setSavingId(row.id)
+      await assignStoreOwner(row.id, newOwnerId)
+      setStores(prev => prev.map(s => s.id === row.id ? { ...s, ownerId: newOwnerId } : s))
+      toast('Owner updated', 'success')
+    } catch (err) {
+      toast(err.response?.data?.message || 'Failed to assign owner', 'error')
+    } finally {
+      setSavingId(null)
     }
-    fetch()
-  }, [filters])
+  }
 
-  const ownerIdToName = useMemo(() => {
-    const m = new Map()
-    owners.forEach(o => m.set(o.id, o.name))
-    return m
-  }, [owners])
+  async function handleCreate() {
+    if (!form.name || !form.address) {
+      toast('Store name and address are required', 'error')
+      return
+    }
+    setCreating(true)
+    try {
+      const payload = { name: form.name, email: form.email || undefined, address: form.address || undefined, ownerId: form.ownerId ? Number(form.ownerId) : undefined }
+      await createStore(payload)
+      setForm({ name: '', email: '', address: '', ownerId: '' })
+      setAddOpen(false)
+      await refresh()
+      toast('Store created successfully', 'success')
+    } catch (err) {
+      toast(err.response?.data?.message || 'Failed to create store', 'error')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await deleteStore(deleteTarget.id)
+      await refresh()
+      toast('Store deleted', 'success')
+    } catch (err) {
+      toast(err.response?.data?.message || 'Failed to delete store', 'error')
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
 
   const columns = [
     { key: 'name', title: 'Name' },
-    { key: 'email', title: 'Email' },
+    { key: 'email', title: 'Email', render: (r) => r.email || '—' },
     { key: 'address', title: 'Address' },
-    { key: 'rating', title: 'Rating', render: (r) => r.averageRating || 0 },
-    { key: 'owner', title: 'Owner', render: (r) => ownerIdToName.get(r.ownerId) || '-' },
-    { key: 'actions', title: 'Assign Owner', render: (row) => (
-      <div className="flex items-center gap-2">
-        <select
-          className="border rounded px-2 py-1"
+    { key: 'rating', title: 'Rating', render: (r) => <StarRating value={r.averageRating || 0} size="sm" /> },
+    {
+      key: 'owner', title: 'Owner', sortable: false, render: (row) => (
+        <Select
+          className="w-40"
           value={row.ownerId || ''}
-          onChange={async (e) => {
-            const newOwnerId = e.target.value ? Number(e.target.value) : null
-            try {
-              setSavingId(row.id)
-              await assignStoreOwner(row.id, newOwnerId)
-              setStores(prev => prev.map(s => s.id === row.id ? { ...s, ownerId: newOwnerId } : s))
-            } finally {
-              setSavingId(null)
-            }
-          }}
+          onChange={(e) => handleAssignOwner(row, e)}
           disabled={savingId === row.id}
         >
           <option value="">Unassigned</option>
           {owners.map(o => (
             <option key={o.id} value={o.id}>{o.name}</option>
           ))}
-        </select>
-      </div>
-    ) },
-    { key: 'delete', title: 'Delete', render: (row) => (
-      <button
-        className="text-red-600"
-        onClick={async () => {
-          if (!window.confirm('Delete this store and its ratings?')) return
-          await deleteStore(row.id)
-          const res = await getStoresAdmin(Object.fromEntries(Object.entries(filters).filter(([_,v])=>v)))
-          setStores(res.data || [])
-        }}
-      >Delete</button>
-    ) },
+        </Select>
+      )
+    },
+    {
+      key: 'delete', title: '', sortable: false, render: (row) => (
+        <Button variant="ghost" size="icon" title="Delete store" className="hover:bg-error-bg hover:text-error" onClick={() => setDeleteTarget(row)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )
+    },
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="flex">
-        <Sidebar role="admin" />
-        <main className="p-6 flex-1 mx-auto w-full max-w-7xl">
-          <h1 className="text-2xl font-semibold mb-4">Stores</h1>
-          <div className="bg-white rounded shadow p-4 mb-6">
-            <h2 className="font-semibold mb-3">Filters</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input className="border p-2 rounded" placeholder="Name" value={filters.name} onChange={e=>setFilters(f=>({...f, name: e.target.value}))} />
-              <input className="border p-2 rounded" placeholder="Email" value={filters.email} onChange={e=>setFilters(f=>({...f, email: e.target.value}))} />
-              <input className="border p-2 rounded" placeholder="Address" value={filters.address} onChange={e=>setFilters(f=>({...f, address: e.target.value}))} />
-            </div>
+    <DashboardLayout
+      role="admin"
+      title="Stores"
+      description="Manage stores and their assigned owners"
+      actions={
+        <Button onClick={() => setAddOpen(true)}>
+          <Plus className="h-4 w-4" /> Add Store
+        </Button>
+      }
+    >
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Input icon={<Search className="h-4 w-4" />} placeholder="Filter by name" value={filters.name} onChange={e => setFilters(f => ({ ...f, name: e.target.value }))} />
+            <Input icon={<Search className="h-4 w-4" />} placeholder="Filter by email" value={filters.email} onChange={e => setFilters(f => ({ ...f, email: e.target.value }))} />
+            <Input icon={<Search className="h-4 w-4" />} placeholder="Filter by address" value={filters.address} onChange={e => setFilters(f => ({ ...f, address: e.target.value }))} />
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="bg-white rounded shadow p-4 mb-6">
-            <h2 className="font-semibold mb-3">Add New Store</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-              <input className="border p-2 rounded" placeholder="Name" value={form.name} onChange={e=>setForm(s=>({...s, name: e.target.value}))} />
-              <input className="border p-2 rounded" placeholder="Email" value={form.email} onChange={e=>setForm(s=>({...s, email: e.target.value}))} />
-              <input className="border p-2 rounded" placeholder="Address" value={form.address} onChange={e=>setForm(s=>({...s, address: e.target.value}))} />
-              <select className="border p-2 rounded" value={form.ownerId} onChange={e=>setForm(s=>({...s, ownerId: e.target.value}))}>
-                <option value="">No Owner</option>
-                {owners.map(o => (
-                  <option key={o.id} value={o.id}>{o.name}</option>
-                ))}
-              </select>
-            </div>
-            <button
-              className="mt-3 bg-blue-600 text-white px-4 py-2 rounded"
-              disabled={creating}
-              onClick={async ()=>{
-                try{
-                  setCreating(true)
-                  const payload = { name: form.name, email: form.email || undefined, address: form.address || undefined, ownerId: form.ownerId ? Number(form.ownerId) : undefined }
-                  if(!payload.name){ return }
-                  await createStore(payload)
-                  setForm({ name: '', email: '', address: '', ownerId: '' })
-                  const res = await getStoresAdmin(Object.fromEntries(Object.entries(filters).filter(([_,v])=>v)))
-                  setStores(res.data || [])
-                } finally {
-                  setCreating(false)
-                }
-              }}
-            >Create Store</button>
-          </div>
+      <Table columns={columns} data={stores} loading={loading} emptyTitle="No stores found" emptyDescription="Try adjusting your filters." />
 
-          {loading ? (
-            <div className="bg-white p-4 rounded shadow">Loading...</div>
-          ) : (
-            <Table columns={columns} data={stores} />
-          )}
-        </main>
-      </div>
-    </div>
+      <Dialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        title="Add a new store"
+        description="Create a store and optionally assign an owner"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} loading={creating}>Create store</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="Name">
+            <Input value={form.name} onChange={e => setForm(s => ({ ...s, name: e.target.value }))} placeholder="Store name" />
+          </FormField>
+          <FormField label="Email">
+            <Input type="email" value={form.email} onChange={e => setForm(s => ({ ...s, email: e.target.value }))} placeholder="Store email" />
+          </FormField>
+          <FormField label="Address">
+            <Input value={form.address} onChange={e => setForm(s => ({ ...s, address: e.target.value }))} placeholder="Store address" />
+          </FormField>
+          <FormField label="Owner">
+            <Select value={form.ownerId} onChange={e => setForm(s => ({ ...s, ownerId: e.target.value }))}>
+              <option value="">No owner</option>
+              {owners.map(o => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </Select>
+          </FormField>
+        </div>
+      </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Delete this store?"
+        description={`This will permanently remove ${deleteTarget?.name || 'this store'} and all of its ratings.`}
+        confirmLabel="Delete store"
+      />
+    </DashboardLayout>
   )
 }

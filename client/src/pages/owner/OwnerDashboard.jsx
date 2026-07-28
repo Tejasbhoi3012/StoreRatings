@@ -1,22 +1,18 @@
 import React, { useEffect, useState } from 'react'
+import { Star, Users, Building2, AlertCircle } from 'lucide-react'
 import { getOwnerStoreRatings, getOwnerStore } from '../../services/api'
-import Navbar from '../../components/Navbar'
-import Sidebar from '../../components/Sidebar'
+import DashboardLayout from '../../components/layout/DashboardLayout'
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
+import StatCard from '../../components/ui/StatCard'
+import Avatar from '../../components/ui/Avatar'
+import { StarRating } from '../../components/ui/RatingStars'
+import EmptyState from '../../components/ui/EmptyState'
 
 export default function OwnerDashboard() {
   const [ratings, setRatings] = useState([])
   const [store, setStore] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false)
-  }
 
   useEffect(() => {
     async function fetch() {
@@ -28,8 +24,7 @@ export default function OwnerDashboard() {
         try {
           const r = await getOwnerStoreRatings()
           setRatings(r.data || [])
-        } catch (err) {
-          // If ratings fetch fails (e.g., 404 when no store), keep empty list
+        } catch {
           setRatings([])
         }
       } catch (err) {
@@ -46,41 +41,65 @@ export default function OwnerDashboard() {
     fetch()
   }, [])
 
-  const avg = ratings.length ? (ratings.reduce((a,b)=>a+b.value,0)/ratings.length).toFixed(2) : 0
+  const avg = ratings.length ? (ratings.reduce((a, b) => a + b.value, 0) / ratings.length) : 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar toggleSidebar={toggleSidebar} />
-      <div className="flex">
-        <Sidebar role="owner" isOpen={isSidebarOpen} onClose={closeSidebar} />
-        <main className={`p-6 flex-1 mx-auto w-full max-w-7xl transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
-          <h1 className="text-2xl font-semibold mb-4">Owner Dashboard</h1>
-          {loading && (
-            <div className="bg-white p-4 rounded shadow">Loading...</div>
-          )}
-          {!loading && error && (
-            <div className="bg-red-50 text-red-800 p-4 rounded shadow">{error}</div>
-          )}
-          {!loading && !error && (
-            <>
-              <div className="bg-white p-4 rounded shadow">Store: {store?.name || '-'}</div>
-              <div className="bg-white p-4 rounded shadow mt-4">Average rating: {avg}</div>
-            </>
-          )}
+    <DashboardLayout
+      role="owner"
+      title="Owner Dashboard"
+      description={store?.name ? `Managing ${store.name}` : undefined}
+    >
+      {loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-surface p-5 h-[104px] shimmer" />
+          ))}
+        </div>
+      )}
 
-          <div className="mt-6">
-            <h2 className="font-semibold mb-2">Ratings</h2>
-            <ul className="space-y-2">
-              {ratings.map(r => (
-                <li key={r.id} className="bg-white p-3 rounded shadow">{r.userName} — {r.value}</li>
-              ))}
-              {!ratings.length && !loading && !error && (
-                <li className="text-gray-500">No ratings yet.</li>
-              )}
-            </ul>
+      {!loading && error && (
+        <Card>
+          <CardContent className="flex items-center gap-2.5 text-error">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <p className="text-sm font-medium">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && !error && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <StatCard icon={Building2} label="Store" value={store?.name || '—'} accent="primary" />
+            <StatCard icon={Star} label="Average Rating" value={avg.toFixed(2)} accent="warning" />
+            <StatCard icon={Users} label="Total Ratings" value={ratings.length} accent="success" />
           </div>
-        </main>
-      </div>
-    </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Customer Ratings</CardTitle>
+            </CardHeader>
+            {ratings.length === 0 ? (
+              <EmptyState
+                icon={Star}
+                title="No ratings yet"
+                description="Ratings from customers will show up here once submitted."
+              />
+            ) : (
+              <ul className="divide-y divide-border">
+                {ratings.map(r => (
+                  <li key={r.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar name={r.userName || '?'} size="sm" />
+                      <span className="text-sm font-medium text-foreground truncate">{r.userName}</span>
+                    </div>
+                    <StarRating value={r.value} size="sm" />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </>
+      )}
+    </DashboardLayout>
   )
 }

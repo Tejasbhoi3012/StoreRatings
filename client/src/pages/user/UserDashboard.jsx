@@ -1,59 +1,85 @@
 import React, { useEffect, useState } from 'react'
+import { Search, StoreIcon } from 'lucide-react'
 import { getStores } from '../../services/api'
-import Navbar from '../../components/Navbar'
-import Sidebar from '../../components/Sidebar'
+import DashboardLayout from '../../components/layout/DashboardLayout'
+import { Card, CardContent } from '../../components/ui/Card'
+import { Input } from '../../components/ui/Input'
+import Skeleton from '../../components/ui/Skeleton'
+import EmptyState from '../../components/ui/EmptyState'
 import StoreCard from '../../components/StoreCard'
+import { useToast } from '../../context/ToastContext'
 
 export default function UserDashboard() {
   const [stores, setStores] = useState([])
   const [filters, setFilters] = useState({ name: '', address: '' })
   const [loading, setLoading] = useState(false)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false)
-  }
+  const { toast } = useToast()
 
   useEffect(() => {
     async function fetch() {
       setLoading(true)
-      const res = await getStores(Object.fromEntries(Object.entries(filters).filter(([_,v])=>v)))
-      setStores(res.data || [])
-      setLoading(false)
+      try {
+        const res = await getStores(Object.fromEntries(Object.entries(filters).filter(([, v]) => v)))
+        setStores(res.data || [])
+      } catch (err) {
+        toast(err.response?.data?.message || 'Failed to load stores', 'error')
+      } finally {
+        setLoading(false)
+      }
     }
     fetch()
   }, [filters])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar toggleSidebar={toggleSidebar} />
-      <div className="flex">
-        <Sidebar role="user" isOpen={isSidebarOpen} onClose={closeSidebar} />
-        <main className={`p-6 flex-1 mx-auto w-full max-w-7xl transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
-          <h1 className="text-2xl font-semibold mb-4">Stores</h1>
-          <div className="bg-white rounded shadow p-4 mb-6">
-            <h2 className="font-semibold mb-3">Search</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input className="border p-2 rounded" placeholder="Name" value={filters.name} onChange={e=>setFilters(f=>({...f, name: e.target.value}))} />
-              <input className="border p-2 rounded" placeholder="Address" value={filters.address} onChange={e=>setFilters(f=>({...f, address: e.target.value}))} />
-            </div>
+    <DashboardLayout
+      role="user"
+      title="Browse stores"
+      description="Search stores and share your rating"
+    >
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              icon={<Search className="h-4 w-4" />}
+              placeholder="Search by name"
+              value={filters.name}
+              onChange={e => setFilters(f => ({ ...f, name: e.target.value }))}
+            />
+            <Input
+              icon={<Search className="h-4 w-4" />}
+              placeholder="Search by address"
+              value={filters.address}
+              onChange={e => setFilters(f => ({ ...f, address: e.target.value }))}
+            />
           </div>
-          {loading ? (
-            <div className="bg-white p-4 rounded shadow">Loading...</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {stores.map(s => <StoreCard key={s.id} store={s} onUpdated={()=>{
-                // refresh after rating change
-                setFilters(f => ({ ...f }))
-              }} />)}
+        </CardContent>
+      </Card>
+
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border bg-surface p-5 space-y-4">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-1/3" />
             </div>
-          )}
-        </main>
-      </div>
-    </div>
+          ))}
+        </div>
+      ) : stores.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={StoreIcon}
+            title="No stores found"
+            description="Try adjusting your search filters to find what you're looking for."
+          />
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {stores.map(s => (
+            <StoreCard key={s.id} store={s} onUpdated={() => setFilters(f => ({ ...f }))} />
+          ))}
+        </div>
+      )}
+    </DashboardLayout>
   )
 }

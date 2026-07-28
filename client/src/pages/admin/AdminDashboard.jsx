@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Users, Store, Star, Plus, ArrowRight } from 'lucide-react'
 import {
   getStats,
   getUsers,
@@ -6,26 +8,32 @@ import {
   getStoresAdmin,
   createStore
 } from '../../services/api'
-import Navbar from '../../components/Navbar'
-import Sidebar from '../../components/Sidebar'
+import DashboardLayout from '../../components/layout/DashboardLayout'
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
+import StatCard from '../../components/ui/StatCard'
+import Table from '../../components/Table'
+import Button from '../../components/ui/Button'
+import Dialog from '../../components/ui/Dialog'
+import { FormField, Input, Select } from '../../components/ui/Input'
+import { StarRating } from '../../components/ui/RatingStars'
+import { useToast } from '../../context/ToastContext'
+
+const STATS_CONFIG = [
+  { key: 'users', label: 'Total Users', icon: Users, accent: 'primary' },
+  { key: 'stores', label: 'Total Stores', icon: Store, accent: 'success' },
+  { key: 'ratings', label: 'Total Ratings', icon: Star, accent: 'warning' },
+]
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ users: 0, stores: 0, ratings: 0 })
   const [users, setUsers] = useState([])
   const [stores, setStores] = useState([])
   const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState(null)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [addStoreOpen, setAddStoreOpen] = useState(false)
+  const [form, setForm] = useState({ name: '', email: '', address: '' })
+  const [creating, setCreating] = useState(false)
+  const { toast } = useToast()
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false)
-  }
-
-  // Fetch initial data
   useEffect(() => {
     async function fetchData() {
       try {
@@ -39,7 +47,7 @@ export default function AdminDashboard() {
         setStores(storesRes.data)
       } catch (err) {
         console.error('Failed to fetch data', err)
-        setMessage('❌ Failed to load data')
+        toast('Failed to load dashboard data', 'error')
       } finally {
         setLoading(false)
       }
@@ -47,143 +55,140 @@ export default function AdminDashboard() {
     fetchData()
   }, [])
 
-  // Update user role
   const handleRoleChange = async (id, newRole) => {
     try {
       await updateUserRole(id, newRole)
       setUsers(users.map(u => (u.id === id ? { ...u, role: newRole } : u)))
-      setMessage(`✅ Role updated to ${newRole}`)
-      setTimeout(() => setMessage(null), 3000)
+      toast(`Role updated to ${newRole}`, 'success')
     } catch (err) {
       console.error(err)
-      setMessage('❌ Failed to update role')
-      setTimeout(() => setMessage(null), 3000)
+      toast('Failed to update role', 'error')
     }
   }
 
-  // Create store
   const handleCreateStore = async (e) => {
     e.preventDefault()
-    const form = e.target
-    const payload = {
-      name: form.name.value,
-      email: form.email.value,
-      address: form.address.value,
-    }
+    if (!form.name || !form.address) return
+    setCreating(true)
     try {
-      const newStore = await createStore(payload)
+      const newStore = await createStore(form)
       setStores(prev => [...prev, newStore.data])
-      form.reset()
-      setMessage('✅ Store created successfully')
-      setStats(prev => ({ ...prev, stores: prev.stores + 1 })) // Update count
-      setTimeout(() => setMessage(null), 3000)
+      setForm({ name: '', email: '', address: '' })
+      setStats(prev => ({ ...prev, stores: prev.stores + 1 }))
+      setAddStoreOpen(false)
+      toast('Store created successfully', 'success')
     } catch (err) {
       console.error(err.response?.data || err.message)
-      setMessage(`❌ Failed to create store: ${err.response?.data?.message || err.message}`)
-      setTimeout(() => setMessage(null), 5000)
+      toast(`Failed to create store: ${err.response?.data?.message || err.message}`, 'error')
+    } finally {
+      setCreating(false)
     }
   }
 
+  const userColumns = [
+    { key: 'name', title: 'Name' },
+    { key: 'email', title: 'Email' },
+    {
+      key: 'role', title: 'Role', render: (u) => (
+        <Select
+          value={u.role}
+          onChange={e => handleRoleChange(u.id, e.target.value)}
+          className="w-36"
+        >
+          <option value="user">User</option>
+          <option value="owner">Owner</option>
+          <option value="admin">Admin</option>
+        </Select>
+      )
+    },
+  ]
+
+  const storeColumns = [
+    { key: 'name', title: 'Name' },
+    { key: 'email', title: 'Email', render: (s) => s.email || '—' },
+    { key: 'address', title: 'Address' },
+    { key: 'rating', title: 'Avg Rating', render: (s) => <StarRating value={s.averageRating || 0} size="sm" /> },
+  ]
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Navbar toggleSidebar={toggleSidebar} />
-      <div className="flex">
-        <Sidebar role="admin" isOpen={isSidebarOpen} onClose={closeSidebar} />
-        <main className={`flex-1 p-6 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
-          <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-
-          {/* Notification */}
-          {message && (
-            <div className="mb-4 px-4 py-2 rounded bg-blue-100 text-blue-800">{message}</div>
-          )}
-
-          {loading ? (
-            <p className="text-gray-500">Loading...</p>
+    <DashboardLayout
+      role="admin"
+      title="Admin Dashboard"
+      description="Overview of platform activity"
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {STATS_CONFIG.map(({ key, label, icon, accent }) => (
+          loading ? (
+            <div key={key} className="rounded-xl border border-border bg-surface p-5 h-[104px] shimmer" />
           ) : (
-            <>
-              {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                {['users','stores','ratings'].map((key, idx) => (
-                  <div key={idx} className="bg-white rounded shadow p-6 text-center hover:shadow-lg transition">
-                    <h3 className="text-lg font-semibold capitalize">{key}</h3>
-                    <p className="text-3xl font-bold">{stats[key]}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Users Table */}
-              <h2 className="text-2xl font-semibold mb-4">Manage Users</h2>
-              <div className="overflow-x-auto bg-white rounded shadow mb-10">
-                <table className="min-w-full text-sm divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Name</th>
-                      <th className="px-4 py-2 text-left">Email</th>
-                      <th className="px-4 py-2 text-left">Role</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {users.map(user => (
-                      <tr key={user.id} className="hover:bg-gray-50 transition">
-                        <td className="px-4 py-2 whitespace-nowrap">{user.name}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{user.email}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">
-                          <select
-                            value={user.role}
-                            onChange={e => handleRoleChange(user.id, e.target.value)}
-                            className="border px-2 py-1 rounded bg-gray-50 hover:bg-gray-100"
-                          >
-                            <option value="user">User</option>
-                            <option value="owner">Owner</option>
-                            <option value="admin">Admin</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Create Store Form */}
-              <h2 className="text-2xl font-semibold mb-4">Manage Stores</h2>
-              <form onSubmit={handleCreateStore} className="mb-6 bg-white p-6 rounded shadow space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input name="name" placeholder="Store name" className="border px-3 py-2 rounded w-full" required />
-                  <input name="email" placeholder="Store email" className="border px-3 py-2 rounded w-full" />
-                  <input name="address" placeholder="Store address" className="border px-3 py-2 rounded w-full" required />
-                </div>
-                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition w-full md:w-auto">
-                  Add Store
-                </button>
-              </form>
-
-              {/* Stores Table */}
-              <div className="overflow-x-auto bg-white rounded shadow">
-                <table className="min-w-full text-sm divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Name</th>
-                      <th className="px-4 py-2 text-left">Email</th>
-                      <th className="px-4 py-2 text-left">Address</th>
-                      <th className="px-4 py-2 text-left">Avg Rating</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {stores.map(store => (
-                      <tr key={store.id} className="hover:bg-gray-50 transition">
-                        <td className="px-4 py-2 whitespace-nowrap">{store.name}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{store.email}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{store.address}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{store.averageRating}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </main>
+            <StatCard key={key} icon={icon} label={label} value={stats[key]} accent={accent} />
+          )
+        ))}
       </div>
-    </div>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Manage Users</CardTitle>
+          <Button as={Link} to="/admin/users" variant="ghost" size="sm">
+            View all <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </CardHeader>
+        <div className="p-0">
+          <Table
+            columns={userColumns}
+            data={users.slice(0, 6)}
+            loading={loading}
+            emptyTitle="No users yet"
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Stores</CardTitle>
+          <div className="flex items-center gap-2">
+            <Button as={Link} to="/admin/stores" variant="ghost" size="sm">
+              View all <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="sm" onClick={() => setAddStoreOpen(true)}>
+              <Plus className="h-4 w-4" /> Add Store
+            </Button>
+          </div>
+        </CardHeader>
+        <div className="p-0">
+          <Table
+            columns={storeColumns}
+            data={stores.slice(0, 6)}
+            loading={loading}
+            emptyTitle="No stores yet"
+          />
+        </div>
+      </Card>
+
+      <Dialog
+        open={addStoreOpen}
+        onClose={() => setAddStoreOpen(false)}
+        title="Add a new store"
+        description="Create a store record for the platform"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setAddStoreOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateStore} loading={creating}>Create store</Button>
+          </>
+        }
+      >
+        <form onSubmit={handleCreateStore} className="space-y-4">
+          <FormField label="Store name">
+            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Acme Supplies" required />
+          </FormField>
+          <FormField label="Store email">
+            <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="store@example.com" />
+          </FormField>
+          <FormField label="Address">
+            <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="123 Main St" required />
+          </FormField>
+        </form>
+      </Dialog>
+    </DashboardLayout>
   )
 }

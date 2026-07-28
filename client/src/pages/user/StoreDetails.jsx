@@ -1,58 +1,114 @@
 import React, { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
+import { ArrowLeft, MapPin, AlertCircle } from 'lucide-react'
 import { getStore, submitRating, updateRating } from '../../services/api'
-import Navbar from '../../components/Navbar'
+import DashboardLayout from '../../components/layout/DashboardLayout'
+import { Card, CardContent } from '../../components/ui/Card'
+import { StarRating, StarPicker } from '../../components/ui/RatingStars'
+import Skeleton from '../../components/ui/Skeleton'
+import { useToast } from '../../context/ToastContext'
 
 export default function StoreDetails() {
   const { id } = useParams()
   const [store, setStore] = useState(null)
-  const [rating, setRating] = useState(5)
+  const [rating, setRating] = useState(0)
   const [userRating, setUserRating] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const { toast } = useToast()
 
-  useEffect(() => {
-    async function fetch() {
-      const res = await getStore(id)
-      setStore(res.data)
-      // assume response includes user's rating if exists
-      setUserRating(res.data.userRating || null)
-    }
-    fetch()
-  }, [id])
-
-  async function handleSubmit() {
+  async function fetch() {
+    setLoading(true)
+    setError(null)
     try {
-      if (userRating) {
-        await updateRating(id, userRating.id, { value: rating })
-      } else {
-        await submitRating(id, { value: rating })
-      }
-      // refresh
       const res = await getStore(id)
       setStore(res.data)
       setUserRating(res.data.userRating || null)
+      setRating(res.data.userRating?.value || 0)
     } catch (err) {
-      // handle
+      setError(err.response?.data?.message || 'Failed to load store')
+    } finally {
+      setLoading(false)
     }
   }
 
-  if (!store) return <div>Loading...</div>
+  useEffect(() => { fetch() }, [id])
+
+  async function handleSubmit(value) {
+    setRating(value)
+    setSaving(true)
+    try {
+      if (userRating) {
+        await updateRating(id, userRating.id, { value })
+      } else {
+        await submitRating(id, { value })
+      }
+      await fetch()
+      toast('Rating saved', 'success')
+    } catch (err) {
+      toast(err.response?.data?.message || 'Failed to save rating', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <main className="p-6">
-        <h1 className="text-2xl mb-2">{store.name}</h1>
-        <p className="mb-4">{store.address}</p>
-        <div className="mb-4">Average: {store.averageRating || 0}</div>
+    <DashboardLayout
+      role="user"
+      actions={
+        <Link to="/user/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="h-4 w-4" /> Back to stores
+        </Link>
+      }
+    >
+      {loading ? (
+        <Card className="max-w-2xl">
+          <CardContent className="space-y-4">
+            <Skeleton className="h-7 w-1/2" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/4" />
+          </CardContent>
+        </Card>
+      ) : error ? (
+        <Card className="max-w-2xl">
+          <CardContent className="flex items-center gap-2.5 text-error">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <p className="text-sm font-medium">{error}</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="max-w-2xl space-y-6">
+          <Card>
+            <CardContent>
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">{store.name}</h1>
+              <div className="flex items-center gap-1.5 text-muted-foreground mt-2">
+                <MapPin className="h-4 w-4 flex-shrink-0" />
+                <p className="text-sm">{store.address}</p>
+              </div>
+              <div className="mt-4 pt-4 border-t border-border flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Average rating</span>
+                <StarRating value={store.averageRating || 0} />
+              </div>
+            </CardContent>
+          </Card>
 
-        <div className="max-w-sm bg-white p-4 rounded shadow">
-          <label className="block mb-2">Your rating</label>
-          <select className="border p-2 w-full" value={rating} onChange={e => setRating(Number(e.target.value))}>
-            {[1,2,3,4,5].map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
-          <button className="mt-2 px-4 py-2 bg-blue-600 text-white rounded" onClick={handleSubmit}>Submit</button>
+          <Card>
+            <CardContent>
+              <h2 className="text-sm font-semibold text-foreground mb-1">
+                {userRating ? 'Your rating' : 'Rate this store'}
+              </h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                {userRating ? 'Tap a star to update your rating.' : 'Tap a star to submit your rating.'}
+              </p>
+              <div className="flex items-center gap-4">
+                <StarPicker value={rating} onChange={handleSubmit} disabled={saving} />
+                {saving && <span className="text-xs text-muted-foreground">Saving…</span>}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </main>
-    </div>
+      )}
+    </DashboardLayout>
   )
 }

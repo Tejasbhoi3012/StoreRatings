@@ -1,18 +1,24 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { Mail, Lock, AlertCircle } from 'lucide-react'
 import { loginUser } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
+import AuthLayout from '../../components/layout/AuthLayout'
+import { FormField, Input } from '../../components/ui/Input'
+import Button from '../../components/ui/Button'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
+    setLoading(true)
     try {
       const res = await loginUser({ email, password })
       localStorage.setItem('token', res.data.token)
@@ -23,81 +29,65 @@ export default function Login() {
       else navigate('/user/dashboard')
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed')
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <span className="text-white font-bold text-xl">SR</span>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-          <p className="text-gray-600">Sign in to your StoreRatings account</p>
+    <AuthLayout>
+      <div className="mb-8 lg:hidden flex items-center gap-2.5">
+        <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+          <span className="text-primary-foreground font-bold text-xs">SR</span>
         </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Sign In</h2>
-          
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
-              <div className="flex items-center">
-                <span className="text-red-600 mr-2">⚠️</span>
-                <p className="text-red-700 font-medium">{error}</p>
-              </div>
-            </div>
-          )}
-          
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address
-              </label>
-              <input 
-                type="email"
-                className="w-full border-2 border-gray-200 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
-                placeholder="Enter your email"
-                value={email} 
-                onChange={e=>setEmail(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Password
-              </label>
-              <input 
-                type="password" 
-                className="w-full border-2 border-gray-200 rounded-lg p-3 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 outline-none"
-                placeholder="Enter your password"
-                value={password} 
-                onChange={e=>setPassword(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-          
-          <button 
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg mt-8 font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]"
-          >
-            Sign In
-          </button>
-          
-          <div className="text-center mt-6">
-            <p className="text-gray-600">
-              Don't have an account? 
-              <Link to="/signup" className="ml-1 text-blue-600 hover:text-blue-700 font-semibold hover:underline transition-colors">
-                Sign up
-              </Link>
-            </p>
-          </div>
-        </form>
+        <span className="font-semibold text-lg text-foreground tracking-tight">StoreRatings</span>
       </div>
-    </div>
+
+      <h1 className="text-2xl font-bold text-foreground tracking-tight">Welcome back</h1>
+      <p className="text-sm text-muted-foreground mt-1.5">Sign in to your account to continue</p>
+
+      <form onSubmit={handleSubmit} className="mt-7 space-y-4">
+        {error && (
+          <div className="flex items-center gap-2.5 rounded-lg bg-error-bg border border-error/20 px-3.5 py-3 animate-slide-up">
+            <AlertCircle className="h-4 w-4 text-error flex-shrink-0" />
+            <p className="text-sm font-medium text-error">{error}</p>
+          </div>
+        )}
+
+        <FormField label="Email address">
+          <Input
+            type="email"
+            icon={<Mail className="h-4 w-4" />}
+            placeholder="you@example.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+            autoFocus
+          />
+        </FormField>
+
+        <FormField label="Password">
+          <Input
+            type="password"
+            icon={<Lock className="h-4 w-4" />}
+            placeholder="Enter your password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+          />
+        </FormField>
+
+        <Button type="submit" size="lg" className="w-full mt-2" loading={loading}>
+          Sign in
+        </Button>
+
+        <p className="text-center text-sm text-muted-foreground pt-2">
+          Don't have an account?{' '}
+          <Link to="/signup" className="text-primary font-medium hover:text-primary-hover transition-colors">
+            Create one
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   )
 }

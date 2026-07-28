@@ -1,69 +1,65 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { MapPin, ArrowRight } from 'lucide-react'
 import { submitRating, updateRating } from '../services/api'
-
-function Stars({ value }) {
-  const v = Math.round(value)
-  return (
-    <div className="flex items-center gap-1">
-      <div className="text-yellow-400 text-lg">
-        {'★'.repeat(v)}
-        <span className="text-gray-300">{'★'.repeat(5-v)}</span>
-      </div>
-      <span className="text-sm text-gray-600 ml-1">({value?.toFixed(1) || '0.0'})</span>
-    </div>
-  )
-}
+import { Card } from './ui/Card'
+import { StarRating, StarPicker } from './ui/RatingStars'
+import { useToast } from '../context/ToastContext'
 
 export default function StoreCard({ store, onUpdated }) {
-  const [rating, setRating] = useState(store.userRating?.value || 5)
+  const [rating, setRating] = useState(store.userRating?.value || 0)
   const [saving, setSaving] = useState(false)
+  const { toast } = useToast()
 
-  async function handleRate() {
+  async function handleRate(value) {
+    setRating(value)
     try {
       setSaving(true)
       if (store.userRating) {
-        await updateRating(store.id, store.userRating.id, { value: rating })
+        await updateRating(store.id, store.userRating.id, { value })
       } else {
-        await submitRating(store.id, { value: rating })
+        await submitRating(store.id, { value })
       }
+      toast('Rating saved', 'success')
       onUpdated && onUpdated()
+    } catch (err) {
+      toast(err.response?.data?.message || 'Failed to save rating', 'error')
     } finally {
       setSaving(false)
     }
   }
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group hover:border-blue-300">
-      <div className="p-6">
-        <div className="flex justify-between items-start mb-3">
-          <h3 className="font-bold text-lg text-gray-800 group-hover:text-blue-700 transition-colors">
+    <Card className="group flex flex-col overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+      <div className="p-5 flex-1">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h3 className="font-semibold text-foreground leading-snug">
             {store.name}
           </h3>
-          <div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
         </div>
-        
-        <p className="text-gray-600 text-sm mb-4 leading-relaxed">{store.address}</p>
-        
-        <div className="flex items-center justify-between">
-          <Stars value={store.averageRating || 0} />
-          <Link 
-            to={`/user/store/${store.id}`} 
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-all duration-200 font-medium shadow-sm hover:shadow-md transform hover:scale-105"
-          >
-            View Store
-          </Link>
+
+        <div className="flex items-start gap-1.5 text-muted-foreground mb-4">
+          <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+          <p className="text-sm leading-relaxed line-clamp-2">{store.address}</p>
         </div>
-        <div className="mt-4 flex items-center gap-2">
-          <select className="border p-2 rounded" value={rating} onChange={e=>setRating(Number(e.target.value))}>
-            {[1,2,3,4,5].map(v => <option key={v} value={v}>{v}</option>)}
-          </select>
-          <button disabled={saving} onClick={handleRate} className="px-3 py-2 bg-indigo-600 text-white rounded">
-            {store.userRating ? 'Update Rating' : 'Rate'}
-          </button>
+
+        <StarRating value={store.averageRating || 0} size="sm" />
+
+        <div className="mt-4 pt-4 border-t border-border">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
+            {store.userRating ? 'Your rating' : 'Rate this store'}
+          </p>
+          <StarPicker value={rating} onChange={handleRate} size="md" disabled={saving} />
         </div>
       </div>
-      
-      <div className="h-1 bg-blue-100 group-hover:bg-blue-200 transition-colors"></div>
-    </div>
+
+      <Link
+        to={`/user/store/${store.id}`}
+        className="flex items-center justify-between px-5 py-3 bg-surface-secondary border-t border-border text-sm font-medium text-foreground hover:text-primary hover:bg-surface-hover transition-colors"
+      >
+        View store
+        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+      </Link>
+    </Card>
   )
 }
