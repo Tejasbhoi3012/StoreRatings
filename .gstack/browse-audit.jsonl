@@ -1,0 +1,15 @@
+{"ts":"2026-07-28T16:43:26.669Z","cmd":"goto","args":"http://localhost:5173","origin":"http://localhost:5173/","durationMs":3787,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:27.926Z","cmd":"url","args":"","origin":"http://localhost:5173/login","durationMs":6,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:28.101Z","cmd":"console","args":"--errors","origin":"http://localhost:5173/login","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:33.025Z","cmd":"snapshot","args":"-i","origin":"http://localhost:5173/login","durationMs":105,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:39.701Z","cmd":"fill","args":"@e1 admin@mail.com","origin":"http://localhost:5173/login","durationMs":89,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:39.880Z","cmd":"fill","args":"@e2 admin123","origin":"http://localhost:5173/login","durationMs":22,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:40.144Z","cmd":"click","args":"@e3","origin":"http://localhost:5173/login","durationMs":94,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:41.352Z","cmd":"url","args":"","origin":"http://localhost:5173/login","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:41.502Z","cmd":"console","args":"--errors","origin":"http://localhost:5173/login","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:41.674Z","cmd":"network","args":"","origin":"http://localhost:5173/login","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:51.397Z","cmd":"url","args":"","origin":"http://localhost:5173/admin/dashboard","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:51.552Z","cmd":"network","args":"","origin":"http://localhost:5173/admin/dashboard","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:51.737Z","cmd":"text","args":"","origin":"http://localhost:5173/admin/dashboard","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:58.617Z","cmd":"console","args":"--errors","origin":"http://localhost:5173/admin/dashboard","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-28T16:43:59.091Z","cmd":"screenshot","args":"C:\\Users\\adity\\AppData\\Local\\Temp\\claude\\D--Projects-StoreRatings\\4ed7ff82-39b7-42f9-a144-b1c396ef06d4\\scratchpad\\admin-dashboard.png","origin":"http://localhost:5173/admin/dashboard","durationMs":313,"status":"ok","hasCookies":false,"mode":"launched"}
