@@ -2,7 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const { sequelize } = require('./models')
-const bcrypt = require("bcrypt")
+const bcrypt = require("bcryptjs")
 const { User } = require("./models")
 // Import routes
 const authRoutes = require('./routes/auth')
